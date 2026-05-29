@@ -33,6 +33,12 @@ vi.mock("expo-constants", () => ({
   },
 }));
 
+vi.mock("react-native", () => ({
+  Platform: {
+    OS: "ios",
+  },
+}));
+
 vi.mock("../../lib/storage", () => ({
   loadOrCreateAgentAwarenessDeviceId: vi.fn(() => Promise.resolve("device-1")),
   loadPreferences: vi.fn(() => Promise.resolve({})),
@@ -435,6 +441,15 @@ describe("mobile cloud link environment client", () => {
       expect(new URLSearchParams(requestBodyText(exchangeRequest?.body)).get("scope")).toBe(
         "environment:status environment:connect",
       );
+      const environmentTokenRequest = fetchMock.mock.calls.find(([url]) =>
+        String(url).endsWith("/oauth/token"),
+      )?.[1];
+      const environmentTokenBody = new URLSearchParams(
+        requestBodyText(environmentTokenRequest?.body),
+      );
+      expect(environmentTokenBody.get("client_label")).toBe("T3 Code Mobile");
+      expect(environmentTokenBody.get("client_device_type")).toBe("mobile");
+      expect(environmentTokenBody.get("client_os")).toBe("iOS");
     }),
   );
 

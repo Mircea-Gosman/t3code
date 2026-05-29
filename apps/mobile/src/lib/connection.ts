@@ -5,7 +5,10 @@ import {
 } from "@t3tools/client-runtime";
 import { resolveRemotePairingTarget, stripPairingTokenFromUrl } from "@t3tools/shared/remote";
 import * as Effect from "effect/Effect";
+import { mobileAuthClientMetadata } from "./authClientMetadata";
 import { mobileRuntime } from "./runtime";
+
+export { mobileAuthClientMetadata } from "./authClientMetadata";
 
 export interface RemoteConnectionInput {
   readonly pairingUrl: string;
@@ -55,6 +58,7 @@ export async function bootstrapRemoteConnection(
         bootstrap: bootstrapRemoteBearerSession({
           httpBaseUrl: target.httpBaseUrl,
           credential: target.credential,
+          clientMetadata: mobileAuthClientMetadata(),
         }),
       },
       { concurrency: "unbounded" },

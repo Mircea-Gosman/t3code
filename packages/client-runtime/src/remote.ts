@@ -43,6 +43,14 @@ const remoteApiBaseUrl = (httpBaseUrl: string): string => {
   return url.toString();
 };
 
+const clientMetadataTokenExchangeFields = (
+  clientMetadata: AuthClientPresentationMetadata | undefined,
+) => ({
+  ...(clientMetadata?.label ? { client_label: clientMetadata.label } : {}),
+  ...(clientMetadata?.deviceType ? { client_device_type: clientMetadata.deviceType } : {}),
+  ...(clientMetadata?.os ? { client_os: clientMetadata.os } : {}),
+});
+
 export class RemoteEnvironmentAuthFetchError extends Data.TaggedError(
   "RemoteEnvironmentAuthFetchError",
 )<{
@@ -169,14 +177,6 @@ export const makeEnvironmentHttpApiClient = (httpBaseUrl: string) =>
       baseUrl: remoteApiBaseUrl(httpBaseUrl),
     });
   });
-
-const clientMetadataTokenExchangeFields = (
-  clientMetadata: AuthClientPresentationMetadata | undefined,
-) => ({
-  ...(clientMetadata?.label ? { client_label: clientMetadata.label } : {}),
-  ...(clientMetadata?.deviceType ? { client_device_type: clientMetadata.deviceType } : {}),
-  ...(clientMetadata?.os ? { client_os: clientMetadata.os } : {}),
-});
 
 export const exchangeRemoteDpopAccessToken = Effect.fn(
   "clientRuntime.remote.exchangeRemoteDpopAccessToken",

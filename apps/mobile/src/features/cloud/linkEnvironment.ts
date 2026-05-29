@@ -32,6 +32,7 @@ import {
   ManagedRelayDpopSigner,
 } from "@t3tools/client-runtime";
 
+import { mobileAuthClientMetadata } from "../../lib/authClientMetadata";
 import type { SavedRemoteConnection } from "../../lib/connection";
 import { loadOrCreateAgentAwarenessDeviceId, loadPreferences } from "../../lib/storage";
 
@@ -527,6 +528,7 @@ export function connectCloudEnvironment(input: {
       httpBaseUrl: connect.endpoint.httpBaseUrl,
       credential: connect.credential,
       dpopProof: bootstrapDpop,
+      clientMetadata: mobileAuthClientMetadata(),
     }).pipe(
       Effect.mapError(
         cloudEnvironmentLinkError("Could not exchange a managed endpoint DPoP access token."),
