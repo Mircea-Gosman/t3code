@@ -1198,7 +1198,7 @@ function createSavedEnvironmentClient(
             return await webRuntime.runPromise(
               createManagedRelayDpopProof({
                 method: "POST",
-                url: new URL("/api/auth/ws-token", record.httpBaseUrl).toString(),
+                url: new URL("/api/auth/websocket-ticket", record.httpBaseUrl).toString(),
                 accessToken: credential.accessToken,
               }).pipe(
                 Effect.flatMap((proof) =>
@@ -1224,7 +1224,7 @@ function createSavedEnvironmentClient(
             return await webRuntime.runPromise(
               createManagedRelayDpopProof({
                 method: "POST",
-                url: new URL("/api/auth/ws-token", renewed.record.httpBaseUrl).toString(),
+                url: new URL("/api/auth/websocket-ticket", renewed.record.httpBaseUrl).toString(),
                 accessToken: renewedCredential.accessToken,
               }).pipe(
                 Effect.flatMap((proof) =>
