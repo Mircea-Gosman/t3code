@@ -124,7 +124,9 @@ const pairingListCommand = Command.make("list", {
       flags,
       (authControlPlane) =>
         Effect.gen(function* () {
-          const pairingLinks = yield* authControlPlane.listPairingLinks();
+          const pairingLinks = yield* authControlPlane.listPairingLinks({
+            excludeSubjects: ["administrative-bootstrap"],
+          });
           yield* Console.log(formatPairingCredentialList(pairingLinks, { json: flags.json }));
         }),
       {
