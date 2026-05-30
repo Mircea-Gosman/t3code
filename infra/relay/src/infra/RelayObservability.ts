@@ -1,10 +1,9 @@
 import * as Axiom from "alchemy/Axiom";
-import * as Output from "alchemy/Output";
 import * as Effect from "effect/Effect";
 
 export const RELAY_OBSERVABILITY_SERVICE_NAME = "t3-code-relay-worker";
 export const RELAY_OBSERVABILITY_EXPORT_INTERVAL = "1 second";
-export const RELAY_AXIOM_TRACE_DATASET = "t3-code-relay-events";
+export const RELAY_AXIOM_TRACE_DATASET = "t3-code-relay-traces";
 
 export const relayTraceQuery = (query: string, dataset: string = RELAY_AXIOM_TRACE_DATASET) =>
   `['${dataset}']\n${query}`;
@@ -22,9 +21,9 @@ export const relayAxiomQueryDatasetCapabilities = (
 });
 
 export const provisionRelayObservability = Effect.gen(function* () {
-  const events = yield* Axiom.Dataset("RelayEventsDataset", {
+  const traces = yield* Axiom.Dataset("RelayTracesDataset", {
     name: RELAY_AXIOM_TRACE_DATASET,
-    kind: "axiom:events:v1",
+    kind: "otel:traces:v1",
     description: "T3 Code relay Worker HTTP request spans.",
     retentionDays: 30,
     useRetentionPeriod: true,
@@ -33,25 +32,22 @@ export const provisionRelayObservability = Effect.gen(function* () {
   const ingestToken = yield* Axiom.ApiToken("RelayAxiomIngestToken", {
     name: "t3-code-relay-otel-ingest",
     description: "Owned by Alchemy. Scoped OTLP ingest token for relay HTTP spans.",
-    datasetCapabilities: Output.map(events.name, relayAxiomIngestDatasetCapabilities),
+    datasetCapabilities: relayAxiomIngestDatasetCapabilities(),
   });
   const queryToken = yield* Axiom.ApiToken("RelayAxiomQueryToken", {
     name: "t3-code-relay-readonly-query",
     description: "Owned by Alchemy. Read-only query token for relay HTTP span diagnostics.",
-    datasetCapabilities: Output.map(events.name, relayAxiomQueryDatasetCapabilities),
+    datasetCapabilities: relayAxiomQueryDatasetCapabilities(),
   });
 
   yield* Axiom.View("RelayRecentSpansView", {
     name: "t3-code-relay-recent-spans",
     description: "Recent relay HTTP request spans.",
-    datasets: [events.name],
-    aplQuery: Output.map(events.name, (dataset) =>
-      relayTraceQuery(
-        "| where isnotnull(span_id) or isnotnull(trace_id)\n| project _time, name, trace_id, span_id, duration, ['http.request.method'], ['url.path'], ['http.response.status_code'], ['relay.endpoint']\n| order by _time desc\n| limit 200",
-        dataset,
-      ),
+    datasets: [RELAY_AXIOM_TRACE_DATASET],
+    aplQuery: relayTraceQuery(
+      "| where isnotnull(span_id) or isnotnull(trace_id)\n| project _time, name, trace_id, span_id, duration, ['http.request.method'], ['url.path'], ['http.response.status_code'], ['relay.endpoint']\n| order by _time desc\n| limit 200",
     ),
   });
 
-  return { events, ingestToken, queryToken } as const;
+  return { traces, ingestToken, queryToken } as const;
 });

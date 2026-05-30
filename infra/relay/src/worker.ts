@@ -38,6 +38,7 @@ import {
   managedEndpointProvisionerTokenPolicies,
 } from "./infra/ManagedEndpointStackConfig.ts";
 import {
+  RELAY_AXIOM_TRACE_DATASET,
   RELAY_OBSERVABILITY_EXPORT_INTERVAL,
   RELAY_OBSERVABILITY_SERVICE_NAME,
   provisionRelayObservability,
@@ -82,7 +83,7 @@ const makeAxiomHeaders = (input: {
 
 const makeRelayTraceLayer = (input: {
   readonly tracesEndpoint: string;
-  readonly eventsDatasetName: string;
+  readonly tracesDatasetName: string;
   readonly ingestToken: Redacted.Redacted<string>;
 }) =>
   OtlpTracer.layer({
@@ -96,7 +97,7 @@ const makeRelayTraceLayer = (input: {
     },
     headers: makeAxiomHeaders({
       token: input.ingestToken,
-      dataset: input.eventsDatasetName,
+      dataset: input.tracesDatasetName,
     }),
     exportInterval: RELAY_OBSERVABILITY_EXPORT_INTERVAL,
   }).pipe(Layer.provide(OtlpSerialization.layerJson), Layer.provide(FetchHttpClient.layer));
@@ -138,13 +139,16 @@ export default class Api extends Cloudflare.Worker<Api>()(
     const apnsPrivateKey = yield* Config.redacted("APNS_PRIVATE_KEY");
     const relayObservability = yield* provisionRelayObservability;
     const axiomIngestToken = yield* relayObservability.ingestToken.token;
-    const axiomTracesEndpoint = yield* relayObservability.events.otelTracesEndpoint;
-    const axiomEventsDatasetName = yield* relayObservability.events.name;
+    const axiomTracesEndpoint = yield* relayObservability.traces.otelTracesEndpoint;
     const relayTraceLayer = Effect.all({
       tracesEndpoint: axiomTracesEndpoint,
-      eventsDatasetName: axiomEventsDatasetName,
       ingestToken: axiomIngestToken,
-    }).pipe(Effect.map(makeRelayTraceLayer), Layer.unwrap);
+    }).pipe(
+      Effect.map((input) =>
+        makeRelayTraceLayer({ ...input, tracesDatasetName: RELAY_AXIOM_TRACE_DATASET }),
+      ),
+      Layer.unwrap,
+    );
     const randomApnsDeliveryJobSigningSecret = yield* Alchemy.Random(
       "ApnsDeliveryJobSigningSecret",
       { bytes: 32 },
