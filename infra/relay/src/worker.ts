@@ -1,7 +1,6 @@
 import * as Alchemy from "alchemy";
 import * as Cloudflare from "alchemy/Cloudflare";
 import * as Drizzle from "alchemy/Drizzle";
-import * as Output from "alchemy/Output";
 import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -32,12 +31,12 @@ import {
   tokenApi,
 } from "./api.ts";
 import {
+  MANAGED_ENDPOINT_BASE_DOMAIN,
   MANAGED_ENDPOINT_ZONE,
-  managedEndpointBaseDomain,
+  RELAY_PUBLIC_DOMAIN,
+  RELAY_PUBLIC_ORIGIN,
   managedEndpointProvisionerTokenPolicies,
-  relayPublicOrigin,
 } from "./infra/ManagedEndpointStackConfig.ts";
-import { ImportedCloudflareZone } from "./infra/ImportedCloudflareZone.ts";
 import {
   RELAY_OBSERVABILITY_EXPORT_INTERVAL,
   RELAY_OBSERVABILITY_SERVICE_NAME,
@@ -110,34 +109,19 @@ export default class Api extends Cloudflare.Worker<Api>()(
       date: "2026-05-22",
       flags: ["nodejs_compat"],
     },
+    domain: RELAY_PUBLIC_DOMAIN,
   },
   Effect.gen(function* () {
-    const managedEndpointZone = yield* ImportedCloudflareZone("ManagedEndpointZone", {
-      zoneId: MANAGED_ENDPOINT_ZONE.zoneId,
-      baseSubdomain: MANAGED_ENDPOINT_ZONE.baseSubdomain,
-    });
     const managedEndpointProvisionerToken = yield* Cloudflare.AccountApiToken(
       "ManagedEndpointProvisionerToken",
       {
         name: "t3-code-relay-managed-endpoint-provisioner",
-        policies: Output.all(managedEndpointZone.accountId, managedEndpointZone.zoneId).pipe(
-          Output.map(([accountId, zoneId]) =>
-            managedEndpointProvisionerTokenPolicies({ accountId, zoneId }),
-          ),
-        ),
+        policies: managedEndpointProvisionerTokenPolicies({
+          accountId: MANAGED_ENDPOINT_ZONE.accountId,
+          zoneId: MANAGED_ENDPOINT_ZONE.zoneId,
+        }),
       },
     );
-    const relayIssuer = yield* Output.map(managedEndpointZone.name, (name) =>
-      relayPublicOrigin({ name }),
-    );
-    const managedEndpointBaseDomainValue = yield* Output.map(managedEndpointZone.name, (name) =>
-      managedEndpointBaseDomain({
-        name,
-        baseSubdomain: MANAGED_ENDPOINT_ZONE.baseSubdomain,
-      }),
-    );
-    const managedEndpointCloudflareAccountId = yield* managedEndpointZone.accountId;
-    const managedEndpointCloudflareZoneId = yield* managedEndpointZone.zoneId;
     const managedEndpointCloudflareApiToken = yield* managedEndpointProvisionerToken.value;
     const relayHyperdrive = yield* RelayHyperdrive;
     const apnsDeliveryQueue = yield* RelayApnsDeliveryQueue;
@@ -174,7 +158,7 @@ export default class Api extends Cloudflare.Worker<Api>()(
     const getSettings = yield* Effect.cached(
       Effect.gen(function* () {
         return Settings.Settings.of({
-          relayIssuer: yield* relayIssuer,
+          relayIssuer: RELAY_PUBLIC_ORIGIN,
           apns: {
             environment,
             teamId: apnsTeamId,
@@ -186,9 +170,9 @@ export default class Api extends Cloudflare.Worker<Api>()(
           clerkSecretKey,
           cloudMintPrivateKey: yield* cloudMintPrivateKey,
           cloudMintPublicKey: yield* cloudMintPublicKey,
-          managedEndpointBaseDomain: yield* managedEndpointBaseDomainValue,
-          cloudflareAccountId: yield* managedEndpointCloudflareAccountId,
-          cloudflareZoneId: yield* managedEndpointCloudflareZoneId,
+          managedEndpointBaseDomain: MANAGED_ENDPOINT_BASE_DOMAIN,
+          cloudflareAccountId: MANAGED_ENDPOINT_ZONE.accountId,
+          cloudflareZoneId: MANAGED_ENDPOINT_ZONE.zoneId,
           cloudflareApiToken: yield* managedEndpointCloudflareApiToken,
         });
       }),

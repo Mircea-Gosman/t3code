@@ -1,22 +1,12 @@
 export const MANAGED_ENDPOINT_ZONE = {
+  name: "ineededadomain.com",
   zoneId: "fcea40a6915723b0f5c4a9480eb3507b",
-  baseSubdomain: "tunnels",
+  accountId: "1468bbd99811cdaccfbb707dc725421a",
 } as const;
 
-const relayPublicSubdomain = "t3code-relay";
-
-export const RELAY_PUBLIC_SUBDOMAIN = relayPublicSubdomain;
-
-export const relayPublicDomain = (zone: { readonly name: string }) =>
-  `${relayPublicSubdomain}.${zone.name}`;
-
-export const relayPublicOrigin = (zone: { readonly name: string }) =>
-  `https://${relayPublicDomain(zone)}`;
-
-export const managedEndpointBaseDomain = (zone: {
-  readonly name: string;
-  readonly baseSubdomain?: string;
-}) => zone.name;
+export const RELAY_PUBLIC_DOMAIN = `t3code-relay.${MANAGED_ENDPOINT_ZONE.name}`;
+export const RELAY_PUBLIC_ORIGIN = `https://${RELAY_PUBLIC_DOMAIN}`;
+export const MANAGED_ENDPOINT_BASE_DOMAIN = MANAGED_ENDPOINT_ZONE.name;
 
 export function managedEndpointProvisionerTokenPolicies(input: {
   readonly accountId: string;
@@ -33,23 +23,6 @@ export function managedEndpointProvisionerTokenPolicies(input: {
     {
       effect: "allow" as const,
       permissionGroups: ["DNS Read" as const, "DNS Write" as const],
-      resources: {
-        [`com.cloudflare.api.account.zone.${input.zoneId}`]: "*",
-      },
-    },
-  ];
-}
-
-export function relayWorkerDomainDnsTokenPolicies(input: { readonly zoneId: string }) {
-  return [
-    {
-      effect: "allow" as const,
-      permissionGroups: [
-        "DNS Read" as const,
-        "DNS Write" as const,
-        "Workers Routes Read" as const,
-        "Workers Routes Write" as const,
-      ],
       resources: {
         [`com.cloudflare.api.account.zone.${input.zoneId}`]: "*",
       },
