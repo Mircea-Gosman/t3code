@@ -102,6 +102,8 @@ const makeRelayTraceLayer = (input: {
     exportInterval: RELAY_OBSERVABILITY_EXPORT_INTERVAL,
   }).pipe(Layer.provide(OtlpSerialization.layerJson), Layer.provide(FetchHttpClient.layer));
 
+// Implicit Config capture deploys these as plain_text in Alchemy 2.0.0-beta.45.
+// Explicit bindings preserve Cloudflare secret_text storage.
 const apnsPrivateKeyConfig = Config.redacted("APNS_PRIVATE_KEY");
 const clerkSecretKeyConfig = Config.redacted("CLERK_SECRET_KEY");
 
