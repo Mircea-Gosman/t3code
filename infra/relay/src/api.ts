@@ -9,7 +9,6 @@ import * as Layer from "effect/Layer";
 import * as Record from "effect/Record";
 import * as Redacted from "effect/Redacted";
 import * as Schema from "effect/Schema";
-import type * as Tracer from "effect/Tracer";
 import * as HttpEffect from "effect/unstable/http/HttpEffect";
 import * as HttpMiddleware from "effect/unstable/http/HttpMiddleware";
 import * as HttpPlatform from "effect/unstable/http/HttpPlatform";
@@ -138,8 +137,9 @@ export const traceRelayHttpRequest = <E, R>(
     E,
     HttpServerRequest.HttpServerRequest | R
   >,
-  tracer: Tracer.Tracer,
-) => HttpMiddleware.tracer(httpEffect).pipe(Effect.withTracer(tracer));
+) =>
+  // HttpMiddleware finalizes its span on the dispatcher; do not close a request-scoped exporter first.
+  HttpMiddleware.tracer(httpEffect).pipe(Effect.ensuring(Effect.yieldNow));
 
 export const relayClientAuthLayer = Layer.effect(
   RelayClientAuth,

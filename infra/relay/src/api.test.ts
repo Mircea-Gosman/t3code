@@ -56,10 +56,10 @@ describe("relay request tracing", () => {
         }),
       );
 
-      yield* traceRelayHttpRequest(endpoint(), tracer).pipe(
+      yield* traceRelayHttpRequest(endpoint()).pipe(
+        Effect.provideService(Tracer.Tracer, tracer),
         Effect.provideService(HttpServerRequest.HttpServerRequest, request),
       );
-      yield* Effect.yieldNow;
 
       expect(spans.map((span) => span.name)).toEqual(["http.server POST", "relay.test.endpoint"]);
       expect(spans[0]?.kind).toBe("server");

@@ -102,6 +102,9 @@ const makeRelayTraceLayer = (input: {
     exportInterval: RELAY_OBSERVABILITY_EXPORT_INTERVAL,
   }).pipe(Layer.provide(OtlpSerialization.layerJson), Layer.provide(FetchHttpClient.layer));
 
+const apnsPrivateKeyConfig = Config.redacted("APNS_PRIVATE_KEY");
+const clerkSecretKeyConfig = Config.redacted("CLERK_SECRET_KEY");
+
 export default class Api extends Cloudflare.Worker<Api>()(
   "Api",
   {
@@ -111,6 +114,10 @@ export default class Api extends Cloudflare.Worker<Api>()(
       flags: ["nodejs_compat"],
     },
     domain: RELAY_PUBLIC_DOMAIN,
+    env: {
+      APNS_PRIVATE_KEY: apnsPrivateKeyConfig,
+      CLERK_SECRET_KEY: clerkSecretKeyConfig,
+    },
   },
   Effect.gen(function* () {
     const managedEndpointProvisionerToken = yield* Cloudflare.AccountApiToken(
@@ -136,7 +143,7 @@ export default class Api extends Cloudflare.Worker<Api>()(
     const apnsTeamId = yield* Config.string("APNS_TEAM_ID");
     const apnsKeyId = yield* Config.string("APNS_KEY_ID");
     const apnsBundleId = yield* Config.string("APNS_BUNDLE_ID");
-    const apnsPrivateKey = yield* Config.redacted("APNS_PRIVATE_KEY");
+    const apnsPrivateKey = yield* apnsPrivateKeyConfig;
     const relayObservability = yield* provisionRelayObservability;
     const axiomIngestToken = yield* relayObservability.ingestToken.token;
     const axiomTracesEndpoint = yield* relayObservability.traces.otelTracesEndpoint;
@@ -154,7 +161,7 @@ export default class Api extends Cloudflare.Worker<Api>()(
       { bytes: 32 },
     );
     const apnsDeliveryJobSigningSecret = yield* randomApnsDeliveryJobSigningSecret.text;
-    const clerkSecretKey = yield* Config.redacted("CLERK_SECRET_KEY");
+    const clerkSecretKey = yield* clerkSecretKeyConfig;
     const cloudMintPrivateKey = yield* cloudMintKeyPair.privateKey;
     const cloudMintPublicKey = yield* cloudMintKeyPair.publicKey;
     const db = yield* Drizzle.postgres(hyperdrive.connectionString);
@@ -265,11 +272,14 @@ export default class Api extends Cloudflare.Worker<Api>()(
         Layer.provide([Etag.layerWeak, RelayHttpPlatformLayer, relayCors]),
         HttpRouter.toHttpEffect,
       );
-      const tracer = yield* Effect.tracer;
-      return { handler: traceRelayHttpRequest(handler, tracer) };
+      return { handler };
     });
-    const getFetch = yield* Effect.cached(buildFetch().pipe(Effect.provide(relayTraceLayer)));
-    const fetch = getFetch.pipe(Effect.map(({ handler }) => handler));
+    const getFetch = yield* Effect.cached(buildFetch());
+    const fetch = getFetch.pipe(
+      Effect.map(({ handler }) =>
+        traceRelayHttpRequest(handler).pipe(Effect.provide(relayTraceLayer)),
+      ),
+    );
 
     return { fetch };
   }).pipe(
