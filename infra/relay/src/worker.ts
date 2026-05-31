@@ -32,10 +32,10 @@ import {
 } from "./api.ts";
 import {
   MANAGED_ENDPOINT_BASE_DOMAIN,
+  MANAGED_ENDPOINT_PROVISIONER_TOKEN_POLICIES,
   MANAGED_ENDPOINT_ZONE,
   RELAY_PUBLIC_DOMAIN,
   RELAY_PUBLIC_ORIGIN,
-  managedEndpointProvisionerTokenPolicies,
 } from "./infra/ManagedEndpointStackConfig.ts";
 import {
   RELAY_AXIOM_TRACE_DATASET,
@@ -126,10 +126,7 @@ export default class Api extends Cloudflare.Worker<Api>()(
       "ManagedEndpointProvisionerToken",
       {
         name: "t3-code-relay-managed-endpoint-provisioner",
-        policies: managedEndpointProvisionerTokenPolicies({
-          accountId: MANAGED_ENDPOINT_ZONE.accountId,
-          zoneId: MANAGED_ENDPOINT_ZONE.zoneId,
-        }),
+        policies: MANAGED_ENDPOINT_PROVISIONER_TOKEN_POLICIES,
       },
     );
     const managedEndpointCloudflareApiToken = yield* managedEndpointProvisionerToken.value;
@@ -248,6 +245,7 @@ export default class Api extends Cloudflare.Worker<Api>()(
       maxRetries: 5,
       maxWaitTime: "5 seconds",
       retryDelay: "30 seconds",
+      // Alchemy beta.45 expects a resolved string here although Queue names are Outputs.
       deadLetterQueue: apnsDeliveryDeadLetterQueue.queueName as unknown as string,
     }).subscribe((stream) =>
       Stream.runForEach(stream, (message) =>
