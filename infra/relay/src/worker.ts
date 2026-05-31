@@ -102,8 +102,9 @@ const makeRelayTraceLayer = (input: {
     exportInterval: RELAY_OBSERVABILITY_EXPORT_INTERVAL,
   }).pipe(Layer.provide(OtlpSerialization.layerJson), Layer.provide(FetchHttpClient.layer));
 
-// Implicit Config capture deploys these as plain_text in Alchemy 2.0.0-beta.45.
-// Explicit bindings preserve Cloudflare secret_text storage.
+// Bind secrets explicitly and only read them through the runtime worker
+// environment. Reading them through Config during Worker init currently
+// registers a competing plaintext binding.
 const apnsPrivateKeyConfig = Config.redacted("APNS_PRIVATE_KEY");
 const clerkSecretKeyConfig = Config.redacted("CLERK_SECRET_KEY");
 
@@ -142,7 +143,6 @@ export default class Api extends Cloudflare.Worker<Api>()(
     const apnsTeamId = yield* Config.string("APNS_TEAM_ID");
     const apnsKeyId = yield* Config.string("APNS_KEY_ID");
     const apnsBundleId = yield* Config.string("APNS_BUNDLE_ID");
-    const apnsPrivateKey = yield* apnsPrivateKeyConfig;
     const relayObservability = yield* provisionRelayObservability;
     const axiomIngestToken = yield* relayObservability.ingestToken.token;
     const axiomTracesEndpoint = yield* relayObservability.traces.otelTracesEndpoint;
@@ -160,13 +160,15 @@ export default class Api extends Cloudflare.Worker<Api>()(
       { bytes: 32 },
     );
     const apnsDeliveryJobSigningSecret = yield* randomApnsDeliveryJobSigningSecret.text;
-    const clerkSecretKey = yield* clerkSecretKeyConfig;
     const cloudMintPrivateKey = yield* cloudMintKeyPair.privateKey;
     const cloudMintPublicKey = yield* cloudMintKeyPair.publicKey;
     const db = yield* Drizzle.postgres(hyperdrive.connectionString);
 
     const getSettings = yield* Effect.cached(
       Effect.gen(function* () {
+        const workerEnvironment = yield* Cloudflare.WorkerEnvironment;
+        const apnsPrivateKey = Redacted.make(workerEnvironment.APNS_PRIVATE_KEY);
+        const clerkSecretKey = Redacted.make(workerEnvironment.CLERK_SECRET_KEY);
         return Settings.Settings.of({
           relayIssuer: RELAY_PUBLIC_ORIGIN,
           apns: {
