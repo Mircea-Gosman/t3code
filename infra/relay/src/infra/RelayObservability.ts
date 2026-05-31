@@ -8,6 +8,12 @@ export const RELAY_AXIOM_TRACE_DATASET = "t3-code-relay-traces";
 export const relayTraceQuery = (query: string, dataset: string = RELAY_AXIOM_TRACE_DATASET) =>
   `['${dataset}']\n${query}`;
 
+export const relayRecentSpansQuery = (dataset: string = RELAY_AXIOM_TRACE_DATASET) =>
+  relayTraceQuery(
+    "| where isnotnull(span_id) or isnotnull(trace_id)\n| extend requestMethod = column_ifexists('attributes.http.request.method', ''), path = column_ifexists('attributes.url.path', ''), statusCode = column_ifexists('attributes.http.response.status_code', 0), endpoint = column_ifexists('attributes.relay.endpoint', '')\n| project _time, name, trace_id, span_id, duration, requestMethod, path, statusCode, endpoint\n| order by _time desc\n| limit 200",
+    dataset,
+  );
+
 export const relayAxiomIngestDatasetCapabilities = (
   dataset: string = RELAY_AXIOM_TRACE_DATASET,
 ) => ({
@@ -44,9 +50,7 @@ export const provisionRelayObservability = Effect.gen(function* () {
     name: "t3-code-relay-recent-spans",
     description: "Recent relay HTTP request spans.",
     datasets: [RELAY_AXIOM_TRACE_DATASET],
-    aplQuery: relayTraceQuery(
-      "| where isnotnull(span_id) or isnotnull(trace_id)\n| project _time, name, trace_id, span_id, duration, ['http.request.method'], ['url.path'], ['http.response.status_code'], ['relay.endpoint']\n| order by _time desc\n| limit 200",
-    ),
+    aplQuery: relayRecentSpansQuery(),
   });
 
   return { traces, ingestToken, queryToken } as const;

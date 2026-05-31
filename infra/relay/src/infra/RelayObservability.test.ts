@@ -4,6 +4,7 @@ import {
   RELAY_AXIOM_TRACE_DATASET,
   relayAxiomIngestDatasetCapabilities,
   relayAxiomQueryDatasetCapabilities,
+  relayRecentSpansQuery,
   relayTraceQuery,
 } from "./RelayObservability.ts";
 
@@ -24,5 +25,16 @@ describe("RelayObservability", () => {
     expect(relayTraceQuery("| where name == 'GET /health'", "relay-traces-test")).toBe(
       "['relay-traces-test']\n| where name == 'GET /health'",
     );
+  });
+
+  it("projects Effect HTTP span attributes through their OTLP field names", () => {
+    const query = relayRecentSpansQuery("relay-traces-test");
+
+    expect(query).toContain("['relay-traces-test']");
+    expect(query).toContain("attributes.http.request.method");
+    expect(query).toContain("attributes.http.response.status_code");
+    expect(query).toContain("attributes.url.path");
+    expect(query).toContain("attributes.relay.endpoint");
+    expect(query).not.toContain("['http.request.method']");
   });
 });
