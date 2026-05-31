@@ -34,7 +34,7 @@ describe("RelayObservability", () => {
     expect(query).toContain("attributes.http.request.method");
     expect(query).toContain("attributes.http.response.status_code");
     expect(query).toContain("attributes.url.path");
-    expect(query).toContain("attributes.relay.endpoint");
+    expect(query).toContain("column_ifexists('attributes.custom', dynamic({}))['relay.endpoint']");
     expect(query).not.toContain("['http.request.method']");
   });
 });

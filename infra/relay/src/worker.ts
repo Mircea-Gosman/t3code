@@ -247,7 +247,7 @@ export default class Api extends Cloudflare.Worker<Api>()(
       batchSize: 10,
       maxRetries: 5,
       maxWaitTime: "5 seconds",
-      retryDelay: 30,
+      retryDelay: "30 seconds",
       deadLetterQueue: apnsDeliveryDeadLetterQueue.queueName as unknown as string,
     }).subscribe((stream) =>
       Stream.runForEach(stream, (message) =>

@@ -31,8 +31,9 @@ For example:
 | limit 200
 ```
 
-Endpoint failure annotations and other relay-specific attributes are also emitted under
-`attributes.relay.*` when present on a span.
+Endpoint failure annotations and other relay-specific attributes are also emitted in the
+`attributes.custom` map when present on a span, for example
+`['attributes.custom']['relay.endpoint']`.
 
 Agents should prefer the provisioned view or APL queries for completed incidents instead of
 tailing the Cloudflare Worker. Use the read-only query token when scripted access is needed;

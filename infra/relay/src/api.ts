@@ -732,8 +732,6 @@ const currentTraceId = Effect.currentParentSpan.pipe(
 
 function annotateRelayRequest(endpoint: string) {
   return Effect.gen(function* () {
-    const request = yield* HttpServerRequest.HttpServerRequest;
-    const url = HttpServerRequest.toURL(request);
     const traceId = yield* currentTraceId;
 
     yield* Effect.addFinalizer((exit) =>
@@ -746,8 +744,6 @@ function annotateRelayRequest(endpoint: string) {
 
     yield* Effect.annotateCurrentSpan({
       "relay.endpoint": endpoint,
-      "http.request.method": request.method,
-      "url.path": url._tag === "Some" ? url.value.pathname : "unknown",
     });
   });
 }
